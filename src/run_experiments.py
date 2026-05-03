@@ -149,9 +149,12 @@ def build_comparison_df():
             v = r[strat]
             pv = v["portfolio_values"]
             total_ret = v["total_return"]
-            ann_ret = (1 + total_ret) ** (252 / len(pv)) - 1
+            n_days = len(pv)
+            years = n_days / 252
+            ann_ret = (1 + total_ret) ** (1 / years) - 1 if years > 0 else 0
             vol = pv["returns"].std() * np.sqrt(252)
-            sharpe = ann_ret / vol if vol > 0 else 0
+            risk_free = 0.04
+            sharpe = (ann_ret - risk_free) / vol if vol > 0 else 0
             dd = (pv["portfolio_value"] / pv["portfolio_value"].cummax() - 1).min()
 
             rows.append({

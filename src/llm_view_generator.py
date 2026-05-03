@@ -233,7 +233,11 @@ Provide your analysis in the specified JSON format."""
             
             # Validate and normalize
             view['ticker'] = ticker
-            view['expected_return'] = float(view.get('expected_return', 0)) / 100  # Convert % to decimal
+            # LLM returns monthly % alpha (e.g. 4.20 = +4.20%/month).
+            # Convert to daily decimal so it matches the daily-unit Pi from BL equilibrium.
+            # Pi = risk_aversion * Sigma @ w  (daily covariance → daily units)
+            # Q must be in the same units: monthly% / 100 / 21 trading days
+            view['expected_return'] = float(view.get('expected_return', 0)) / 100 / 21  # monthly % → daily decimal
             view['confidence'] = view.get('confidence', 'low').lower()
             view['reasoning'] = view.get('reasoning', '')
             view['key_factors'] = view.get('key_factors', [])
@@ -244,10 +248,10 @@ Provide your analysis in the specified JSON format."""
             view['news_sentiment_label'] = view.get('news_sentiment_label', 'NEUTRAL').upper()
             view['fusion_note'] = view.get('fusion_note', '')
 
-            # Sanity check on expected return
-            if abs(view['expected_return']) > 0.20:  # More than 20% seems extreme
-                logger.warning(f"Extreme return view for {ticker}: {view['expected_return']:.2%}")
-                view['expected_return'] = np.clip(view['expected_return'], -0.20, 0.20)
+            # Sanity check: daily decimal > 1% is already +252%/year — extreme
+            if abs(view['expected_return']) > 0.01:  # >1% per day
+                logger.warning(f"Extreme return view for {ticker}: {view['expected_return']:.4f}/day")
+                view['expected_return'] = np.clip(view['expected_return'], -0.01, 0.01)
 
             return view
 
@@ -331,6 +335,7 @@ Provide your analysis in the specified JSON format."""
         views_df = views_df.copy()
         views_df['abs_return'] = views_df['expected_return'].abs()
         views_df = views_df.sort_values('abs_return', ascending=False).head(max_views)
+        views_df = views_df.reset_index(drop=True)   # fix: ensure 0-based index after sort
 
         n_assets = len(tickers)
         n_views = len(views_df)
@@ -490,7 +495,7 @@ Provide your analysis in the specified JSON format."""
         
         for _, row in views_df.iterrows():
             summary.append(f"Ticker: {row['ticker']}")
-            summary.append(f"  Expected Return: {row['expected_return']:>6.2%}")
+            summary.append(f"  Expected Return: {row['expected_return']:>8.4f}/day  ({row['expected_return']*21:.2%}/month  {row['expected_return']*252:.1%}/year)")
             summary.append(f"  Confidence: {row['confidence']}")
             summary.append(f"  Reasoning: {row['reasoning']}")
             if row['key_factors']:
