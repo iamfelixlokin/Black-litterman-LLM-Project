@@ -1,0 +1,133 @@
+# Black-Litterman Portfolio Configuration
+
+# Asset Universe
+assets:
+  tickers:
+    - AAPL
+    - MSFT
+    - GOOGL
+    - AMZN
+    - NVDA
+    - TSLA
+    - META
+    - SPY
+  benchmark: SPY
+
+# Backtest Parameters
+backtest:
+  start_date: "2025-03-01"
+  end_date: "2026-01-31"
+  initial_capital: 1000000
+  rebalance_frequency: "monthly"
+  lookback_period: 252
+  transaction_cost: 0.001
+  slippage: 0.0005
+
+# Black-Litterman Parameters
+black_litterman:
+  tau: 0.15
+  risk_aversion: 1.8
+  confidence_scaling: true
+  view_update_frequency: "monthly"  #配合重平衡頻率
+  max_views_per_asset: 3
+  confidence_omega:  #更細緻的信心度控制
+    high: 0.15
+    medium: 0.5
+    low: 2.0
+
+# LLM Configuration
+llm:
+  provider: "anthropic"  # anthropic, openai
+  model: "claude-sonnet-4-20250514"
+  max_tokens: 2000
+  temperature: 0.3
+  system_prompt: |
+    You are a quantitative analyst providing market views for portfolio optimization.
+    Analyze the provided information and give your views on expected returns.
+  
+  # Data sources for LLM analysis
+  use_news: true                # ✅ 啟用：structured + news fusion
+  data_sources:
+    - price_history             # ✅ 結構化：Alpha vs SPY, 波動率, 趨勢
+    - news_headlines            # ✅ 非結構化：Finnhub 新聞 + VADER 情緒
+    # - earnings_reports        # 未啟用
+    # - macro_indicators        # 未啟用
+
+  # News & Fusion settings
+  news:
+    source: "finnhub"           # "finnhub" | "database_only"
+    database_path: "data/news_database.json"
+    finnhub_api_key_env: "FINNHUB_API_KEY"
+    lookback_days: 7
+
+  # Fusion: dynamic Omega adjustment
+  fusion:
+    enabled: true
+    agreement_sensitivity: 0.5  # k in exp(-k * agreement); higher = stronger adjustment
+    structured_weight: 0.70     # for documentation / system prompt
+    news_weight: 0.30
+  
+  # View generation parameters
+  view_horizon: 30  # days ahead for return forecast
+  confidence_levels:
+    high: 0.8
+    medium: 0.5
+    low: 0.3
+
+# Risk Management
+risk_management:
+  max_position_size: 0.30  # 30% max per asset
+  min_position_size: 0.05  # 5% min per asset
+  max_leverage: 1.0  # no leverage
+  max_portfolio_volatility: 0.25  # 25% annualized
+  stop_loss: null  # optional stop loss level
+
+# Baseline Strategies
+baseline:
+  markowitz:
+    enabled: true
+    risk_free_rate: 0.04  # 4% annual
+    target_return: null  # if null, use max Sharpe
+  
+  equal_weight:
+    enabled: true
+  
+  spy_benchmark:
+    enabled: true
+
+# Performance Metrics
+metrics:
+  risk_free_rate: 0.04
+  benchmark: SPY
+  rolling_window: 252  # for rolling metrics
+  
+# Data Collection
+data:
+  news_sources:
+    - yahoo_finance
+    - google_news
+    - seeking_alpha
+  
+  fundamental_data:
+    - earnings_reports
+    - revenue_growth
+    - profit_margins
+  
+  macro_indicators:
+    - GDP_growth
+    - inflation
+    - interest_rates
+    - unemployment
+
+# Output Settings
+output:
+  save_weights: true
+  save_returns: true
+  save_metrics: true
+  generate_plots: true
+  results_dir: "results"
+  
+# Logging
+logging:
+  level: INFO
+  file: "logs/backtest.log"
