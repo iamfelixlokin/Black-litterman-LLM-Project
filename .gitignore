@@ -12,10 +12,11 @@ venv/
 dist/
 build/
 
-# Data & results (large files)
-results/
+# Logs only
 logs/
-*.pkl
+
+# Keep results (charts + summaries + pkl, all <1MB)
+# Only exclude tmp files if any
 
 # Keep data/ source files but ignore any cached downloads
 data/*.tmp
